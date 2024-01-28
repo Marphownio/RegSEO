@@ -6,7 +6,9 @@ from urllib.parse import urlparse
 from db.db_init import get_locale
 from db.db_init import DB
 from word2vec import TextPreprocessor, TextVectorizer
+import random
 # from context import ContextCrawl
+from collections import Counter
 
 
 class FeatureExtractor:
@@ -14,6 +16,7 @@ class FeatureExtractor:
         self.author = doc['namespace']  # author_name
         self.name = doc['name']  # package_name
         self.overview = ''
+        self.pull_count = 0
         if doc and "name" in doc:
             self.text = doc["name"]
             if "description" in doc and doc["description"] is not None:
@@ -21,6 +24,8 @@ class FeatureExtractor:
             if "full_description" in doc and doc["full_description"] is not None:
                 self.text += ' ' + doc["full_description"]
                 self.overview = doc["full_description"]
+            if "pull_count" in doc and doc["pull_count"] is not None:
+                self.pull_count = doc["pull_count"]
         self.model = model
         self.vectorizer = TextVectorizer(model)
         self.keywords = self.get_keywords()
@@ -29,7 +34,12 @@ class FeatureExtractor:
         self.semantics_features = self.get_plat_semantics_features()
         self.url_features = self.get_url_features()
         self.ctx_features = self.get_ctx_features()
+        self.metadata_features = self.get_metadata_features()
 
+
+    def get_metadata_features(self):
+        return [1 / (self.pull_count + 1)]
+        
     def get_keywords(self):
         processor = TextPreprocessor()
         keywords = processor.get_top_words(self.text)
@@ -40,7 +50,7 @@ class FeatureExtractor:
         """
         This function returns a list that includes all features.
         """
-        total_features = self.code_features + self.semantics_features + self.url_features + self.ctx_features
+        total_features = self.code_features + self.semantics_features + self.url_features + self.ctx_features + self.metadata_features
         print(total_features)
         return total_features
 
@@ -151,12 +161,16 @@ class FeatureExtractor:
                 short_urls_num += 1
 
         domains_num = len(domains)  # 不同的域名
+        # 统计重复的url
+        element_count = Counter(urls)
+        count_of_duplicates_url = sum(1 for count in element_count.values() if count > 1)
 
         # url_features = [domains_num, external_urls_num, short_urls_num]
         url_features = [external_urls_num / (total_urls_num + 1),
                         short_urls_num / (total_urls_num + 1),
-                        media_urls_num / (external_urls_num + 1),
-                        external_score / (external_urls_num + 1)]
+                        1 / (domains_num + 1),
+                        external_score / (external_urls_num + 1),
+                        1 / (count_of_duplicates_url + 1)]
         # print(url_features)
 
         return url_features
@@ -182,15 +196,16 @@ class FeatureExtractor:
             key = json.load(f)
             platwords = key['docker']
 
-        plat_differences = self.vectorizer.get_average_distances(self.keywords, platwords)
+        plat_semantics_features = self.vectorizer.get_average_distances(self.keywords, platwords)
         print("differences:")
-        print(plat_differences)
+        print(plat_semantics_features)
 
-        if len(plat_differences) == 0:
-            return [1]
-
-        # plat_semantics_features = [min(plat_differences), max(plat_differences), sum(plat_differences) / len(plat_differences)]
-        plat_semantics_features = [sum(plat_differences) / len(plat_differences)]
+        if len(plat_semantics_features) == 0:
+            return [1,1,1,1,1,1,1,1,1,1]
+        
+        while len(plat_semantics_features) < 10:
+            random_elements = random.sample(plat_semantics_features, min(10 - len(plat_semantics_features), len(plat_semantics_features)))
+            plat_semantics_features.extend(random_elements)
         return plat_semantics_features
 
     def get_ctx_features(self):

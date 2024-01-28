@@ -7,11 +7,13 @@ from db.db_init import get_locale
 from db.db_init import DB
 from word2vec import TextPreprocessor, TextVectorizer
 import pymysql
+import random
+from collections import Counter
 # from context import ContextCrawl
 
 
 class FeatureExtractor:
-    def __init__(self, filename, author, description, filenums, license, readme, projectURL, repository, model):
+    def __init__(self, filename, author, description, filenums,dirnum, license, readme, projectURL, repository, model):
         self.user_ctx_databse = "nuget_ctx"
         self.init_db()
 
@@ -20,6 +22,7 @@ class FeatureExtractor:
         self.overview = description
         self.text = filename + description
         self.filenums = filenums
+        self.dirnum = dirnum
         self.license = license
         self.readme_tag = readme
         self.projectURL = projectURL
@@ -61,7 +64,7 @@ class FeatureExtractor:
         return total_features
 
     def get_file_features(self):
-        return [1 / (self.filenums + 1)]
+        return [1 / (self.filenums + 1),1 / (self.dirnum + 1)]
 
     def get_license_features(self):
         return [self.license]
@@ -211,12 +214,16 @@ class FeatureExtractor:
             with open("media_url.txt", "a") as file:
                 file.write(name)
 
+        # 统计重复的url
+        element_count = Counter(urls)
+        count_of_duplicates_url = sum(1 for count in element_count.values() if count > 1)
+
         # url_features = [domains_num, external_urls_num, short_urls_num]
         url_features = [external_urls_num / (total_urls_num + 1),
                         short_urls_num / (total_urls_num + 1),
-                        # media_urls_num / (external_urls_num + 1),
-                        external_score / (external_urls_num + 1)]
-        # print(url_features)
+                        1 / (domains_num + 1),
+                        external_score / (external_urls_num + 1),
+                        1 / (count_of_duplicates_url + 1)]
 
         return url_features
     
@@ -291,15 +298,17 @@ class FeatureExtractor:
             key = json.load(f)
             platwords = key['nuget']
 
-        plat_differences = self.vectorizer.get_average_distances(self.keywords, platwords)
+        plat_semantics_features = self.vectorizer.get_average_distances(self.keywords, platwords)
         print("differences:")
-        print(plat_differences)
+        print(plat_semantics_features)
 
-        if len(plat_differences) == 0:
-            return [1]
-
-        # plat_semantics_features = [min(plat_differences), max(plat_differences), sum(plat_differences) / len(plat_differences)]
-        plat_semantics_features = [sum(plat_differences) / len(plat_differences)]
+        if len(plat_semantics_features) == 0:
+            return [1,1,1,1,1,1,1,1,1,1]
+        
+        while len(plat_semantics_features) < 10:
+            random_elements = random.sample(plat_semantics_features, min(10 - len(plat_semantics_features), len(plat_semantics_features)))
+            plat_semantics_features.extend(random_elements)
+        
         return plat_semantics_features
 
     # def get_ctx_features(self):

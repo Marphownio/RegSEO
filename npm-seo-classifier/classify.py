@@ -179,6 +179,7 @@ def analysis(dir_name,line):
     read_me_text=''
     latin_flag=0
     num_files=0
+    num_dir = 0
     try:
         readme_path = root_path+dir_name+'/'+line
         rdm_file_path1 = "package/README.md"
@@ -203,8 +204,13 @@ def analysis(dir_name,line):
                     file_list = tar.getnames()
                     # 计算文件数量
                     num_files = len(file_list)
+                    # 计算目录数量
+                    all_members = tar.getmembers()
+                    # 获取所有目录的数量
+                    num_dir = sum(1 for member in all_members if member.isdir())
                 except Exception as reason:
-                    num_files=0     
+                    num_files=0  
+                    num_dir=0   
                     print(reason)
                 
                 try:
@@ -229,9 +235,11 @@ def analysis(dir_name,line):
             else:
                 read_me_text=''
                 num_files=0
+                num_dir = 0
     except Exception as reason:
         read_me_text=''
         num_files=0
+        num_dir = 0
         print(reason)
     finally:
         # 如果readme实在是太短了就不分类了(目前认为redme为空则不分类)
@@ -300,7 +308,7 @@ def analysis(dir_name,line):
     
     if text_str.strip():
         features = []
-        extractor = FeatureExtractor(text_str, word2vec,dir_path,homepage_sub_domain,repo_url,read_me_flag,user_name, user_email,num_files)
+        extractor = FeatureExtractor(text_str, word2vec,dir_path,homepage_sub_domain,repo_url,read_me_flag,user_name, user_email,num_files,num_dir)
         # urlss = extractor.return_urls
         features.append(extractor.total_features())
         label_pred = classifier.predict(features)

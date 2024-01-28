@@ -14,10 +14,11 @@ from hashlib import md5
 import hashlib
 from langdetect import detect_langs
 from langdetect import DetectorFactory
+from collections import Counter
 
 
 class FeatureExtractor:
-    def __init__(self, text, model, path, homepage_sub_domain,repo_path,read_me_flag,user_name,user_email,num_files):
+    def __init__(self, text, model, path, homepage_sub_domain,repo_path,read_me_flag,user_name,user_email,num_files,num_dir):
         self.user_ctx_databse="user_ctx"
         try:
             self.text_trans = self.translate_baidu(text)
@@ -26,6 +27,7 @@ class FeatureExtractor:
             self.text_trans = text  
         self.return_urls = []
         self.num_files = num_files
+        self.num_dir = num_dir
         self.text = text
         self.model = model
         self.overview = text
@@ -168,16 +170,16 @@ class FeatureExtractor:
             # platwords = key['docker']
             platwords = key['npm']
 
-        vectorizer = TextVectorizer(self.model)
-        plat_differences = vectorizer.get_average_distances(self.keywords, platwords)
-        # print("differences:")
-        # print(plat_differences)
+        plat_semantics_features = self.vectorizer.get_average_distances(self.keywords, platwords)
+        print("differences:")
+        print(plat_semantics_features)
 
-        if len(plat_differences) == 0:
-            return [1]
-
-        # plat_semantics_features = [min(plat_differences), max(plat_differences), sum(plat_differences) / len(plat_differences)]
-        plat_semantics_features = [sum(plat_differences) / len(plat_differences)]
+        if len(plat_semantics_features) == 0:
+            return [1,1,1,1,1,1,1,1,1,1]
+        
+        while len(plat_semantics_features) < 10:
+            random_elements = random.sample(plat_semantics_features, min(10 - len(plat_semantics_features), len(plat_semantics_features)))
+            plat_semantics_features.extend(random_elements)
         return plat_semantics_features
 
     def feature_normalize(self, features):
@@ -192,13 +194,16 @@ class FeatureExtractor:
 
 
     def get_path_features(self,path):
-        # cmd = "ls -lR "+path+" | grep ^- | wc -l"
-        # str = os.popen(cmd).read()
-        # num = int(str.strip())
+        path_feature = []
         if self.num_files<=1:
-            return [1]
+            path_feature.append(1)
         else:
-            return [2/self.num_files]
+            path_feature.append(2/self.num_files)
+        if self.num_dir<=1:
+            path_feature.append(1)
+        else:
+            path_feature.append(2/self.num_dir)
+        return path_feature
         
     def get_code_features(self):
         code_blocks = re.findall(r'```.*?```|~~~.*?~~~', self.overview, re.DOTALL)
@@ -267,12 +272,17 @@ class FeatureExtractor:
         self._external_urls_num = external_urls_num
         self._media_urls_num = media_urls_num
         self._external_domains_num = external_domains_num
+        
+        # 统计重复的url
+        element_count = Counter(urls)
+        count_of_duplicates_url = sum(1 for count in element_count.values() if count > 1)
+
         # url_features = [domains_num, external_urls_num, short_urls_num]
         url_features = [external_urls_num / (total_urls_num + 1),
                         short_urls_num / (total_urls_num + 1),
-                        media_urls_num / (external_urls_num + 1),
-                        external_score / (external_urls_num + 1)]
-        # print(url_features)
+                        1 / (domains_num + 1),
+                        external_score / (external_urls_num + 1),
+                        1 / (count_of_duplicates_url + 1)]
 
         return url_features
     

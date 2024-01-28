@@ -142,7 +142,7 @@ class classify:
 
             processor = FilePreprocessor(filename, self.date)
 
-            author, description, filenums, license, readme, projectURL, repository = processor.extract_info()
+            author, description, filenums,dirnum, license, readme, projectURL, repository = processor.extract_info()
             # if description=='': continue
             # short description
             
@@ -188,7 +188,7 @@ class classify:
                 url_string = "\n".join(urls)
                 print(url_string)
 
-            extractor = FeatureExtractor(filename, author, description, filenums, license, readme, projectURL, repository, self.model)
+            extractor = FeatureExtractor(filename, author, description, filenums,dirnum, license, readme, projectURL, repository, self.model)
 
             features = []
             features.append(extractor.total_features())
