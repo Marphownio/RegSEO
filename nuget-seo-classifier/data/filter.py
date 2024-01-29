@@ -8,7 +8,7 @@ short_num = no_url = 0
 class FilePreprocessor:
     def __init__(self, filename):
         self.file = filename
-        self.dir = '/data/black_seo_research/nuget-seo-classifier/data/pkg/black/release/' + filename
+        self.dir = '/path/to/nuget-seo-classifier/data/pkg/black/release/' + filename
         self.author = ''
         self.description = ''
         self.metadata = ''
@@ -18,7 +18,7 @@ class FilePreprocessor:
 
     def unzip(self):
         # 打开zip文件
-        file_path = '/data/black_seo_research/nuget-seo-classifier/data/pkg/black/' + self.file + '.nupkg'
+        file_path = '/path/to/nuget-seo-classifier/data/pkg/black/' + self.file + '.nupkg'
         print(file_path)
         try:
             with zipfile.ZipFile(file_path, 'r') as zip_file:
@@ -95,7 +95,7 @@ class FilePreprocessor:
             no_url += 1
 
 sum = 0
-folder_path = '/data/black_seo_research/nuget-seo-classifier/data/pkg/black/'
+folder_path = '/path/to/nuget-seo-classifier/data/pkg/black/'
 file_list = os.listdir(folder_path)
 for filename in file_list: 
     filename = filename.split('.nupkg')[0]   
